@@ -57,7 +57,7 @@
       gl_FragColor = texture2D(u_image, v_texCoord);
     }
   </script>
-  <script src="/public/libs/webgl-utils.js"></script>
+  <script src="../public/libs/webgl-utils.js"></script>
   <script>
     /** @type HTMLCanvasElement */
     const canvas = document.getElementById('canvas')
@@ -67,7 +67,7 @@
     webglUtils.resizeCanvasToDisplaySize(gl.canvas)
 
     const image = new Image()
-    image.src = '/public/images/avatar.png'
+    image.src = '../public/images/avatar.png'
     image.onload = () => render(image)
 
     /** @type HTMLInputElement */
