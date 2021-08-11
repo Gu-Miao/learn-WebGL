@@ -1,3 +1,5 @@
 # Learn WebGL
 
-This repo is based on [https://webgl2fundamentals.org/webgl/lessons/zh_cn/](https://webgl2fundamentals.org/webgl/lessons/zh_cn/).
+Some webGL examples.
+
+A large part of them were based on [webglfundamentals](https://webglfundamentals.org/webgl/lessons/zh_cn/).
