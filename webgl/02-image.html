@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>02 - Images</title>
+    <style>
+      canvas {
+        width: 500px;
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Load images</h1>
+    <input id="file" type="file" accept="image/*" />
+    <br />
+    <br />
+    <canvas id="canvas"></canvas>
+  </body>
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec2 a_position;
+    attribute vec2 a_texCoord;
+
+    uniform vec2 u_resolution;
+
+    varying vec2 v_texCoord;
+
+    void main() {
+      // convert the rectangle from pixels to 0.0 to 1.0
+      vec2 zeroToOne = a_position / u_resolution;
+
+      // convert from 0->1 to 0->2
+      vec2 zeroToTwo = zeroToOne * 2.0;
+
+      // convert from 0->2 to -1->+1 (clipspace)
+      vec2 clipSpace = zeroToTwo - 1.0;
+
+      gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+      // pass the texCoord to the fragment shader
+      // The GPU will interpolate this value between points.
+      v_texCoord = a_texCoord;
+    }
+  </script>
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+
+    // our texture
+    uniform sampler2D u_image;
+
+    // the texCoords passed in from the vertex shader.
+    varying vec2 v_texCoord;
+
+    void main() {
+      gl_FragColor = texture2D(u_image, v_texCoord);
+    }
+  </script>
+  <script src="/public/libs/webgl-utils.js"></script>
+  <script>
+    /** @type HTMLCanvasElement */
+    const canvas = document.getElementById('canvas')
+
+    const gl = canvas.getContext('webgl')
+
+    webglUtils.resizeCanvasToDisplaySize(gl.canvas)
+
+    const image = new Image()
+    image.src = '/public/images/avatar.png'
+    image.onload = () => render(image)
+
+    /** @type HTMLInputElement */
+    const file = document.getElementById('file')
+
+    file.addEventListener('change', async () => {
+      const [imgFile] = file.files
+      const base64 = await getBase64(imgFile)
+      const img = new Image()
+      img.onload = () => render(img)
+      img.src = base64
+    })
+
+    function render(image) {
+      const program = webglUtils.createProgramFromScripts(gl, ['vertexShader', 'fragmentShader'])
+
+      const positionAttributeLocation = gl.getAttribLocation(program, 'a_position')
+      const texCoordAttributeLocation = gl.getAttribLocation(program, 'a_texCoord')
+
+      const positionBuffer = gl.createBuffer()
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
+
+      const imageAspectRatio = image.width / image.height
+      const canvasAspectRatio = canvas.width / canvas.height
+
+      if (imageAspectRatio > canvasAspectRatio) {
+        const height = canvas.width / imageAspectRatio
+        const y = (canvas.height - height) / 2
+        setRectangle(gl, 0, y, canvas.width, height)
+      } else {
+        const width = canvas.height / imageAspectRatio
+        const x = (canvas.width - width) / 2
+        setRectangle(gl, x, 0, width, canvas.height)
+      }
+
+      // setRectangle(gl, 0, 0, image.width, image.height)
+
+      const texcoordBuffer = gl.createBuffer()
+      gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer)
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0]),
+        gl.STATIC_DRAW
+      )
+
+      // Create a texture.
+      const texture = gl.createTexture()
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+
+      // Set the parameters so we can render any size image.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+
+      const resolutionLocation = gl.getUniformLocation(program, 'u_resolution')
+
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+
+      // 清空画布
+      gl.clearColor(0, 0, 0, 0.7)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+
+      gl.useProgram(program)
+
+      gl.enableVertexAttribArray(positionAttributeLocation)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
+
+      gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, false, 0)
+
+      gl.enableVertexAttribArray(texCoordAttributeLocation)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer)
+
+      gl.vertexAttribPointer(texCoordAttributeLocation, 2, gl.FLOAT, false, false, 0)
+
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height)
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+    }
+
+    function setRectangle(gl, x, y, width, height) {
+      console.log(width, height)
+      var x1 = x
+      var x2 = x + width
+      var y1 = y
+      var y2 = y + height
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]),
+        gl.STATIC_DRAW
+      )
+    }
+
+    function getBase64(file) {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      return new Promise((res, rej) => {
+        reader.onload = () => res(reader.result)
+        reader.onerror = e => rej(e.returnValue)
+      })
+    }
+  </script>
+</html>

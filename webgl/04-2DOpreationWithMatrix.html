@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>04 - 2D Opreation With Matrix</title>
+    <style>
+      canvas {
+        width: 500px;
+        height: 400px;
+      }
+      label,
+      input {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>2D Opreation With Matrix</h1>
+    <label for="translateX">Translate X</label>
+    <input id="translateX" type="number" value="46" />
+    <label for="translateY">Translate Y</label>
+    <input id="translateY" type="number" value="30" />
+    <label for="rotateDegree">Rotate Degree</label>
+    <input id="rotateDegree" type="number" value="10" />
+    <label for="scaleX">Scale X</label>
+    <input id="scaleX" type="number" value="1.1" step="0.01" />
+    <label for="scaleY">Scale Y</label>
+    <input id="scaleY" type="number" value="1.12" step="0.01" />
+    <br />
+    <canvas id="canvas"></canvas>
+  </body>
+  <script id="vertexShader" type="x-shader/x-vertex">
+    attribute vec2 a_position;
+
+    uniform vec2 u_resolution;
+    uniform mat3 u_matrix;
+
+    void main() {
+      // Multiply the position by the matrix.
+      vec2 position = (u_matrix * vec3(a_position, 1)).xy;
+
+      gl_Position = vec4(position, 0, 1);
+    }
+  </script>
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    precision mediump float;
+
+    void main() {
+      vec3 color = vec3(0.0);
+
+      gl_FragColor = vec4(color, 1.0);
+    }
+  </script>
+  <script src="/public/libs/webgl-utils.js"></script>
+  <script>
+    /** @type HTMLCanvasElement */
+    const canvas = document.getElementById('canvas')
+
+    const gl = canvas.getContext('webgl')
+
+    webglUtils.resizeCanvasToDisplaySize(canvas)
+
+    /** @type HTMLInputElement */
+    const translateX = document.getElementById('translateX')
+    /** @type HTMLInputElement */
+    const translateY = document.getElementById('translateY')
+    /** @type HTMLInputElement */
+    const rotateDegree = document.getElementById('rotateDegree')
+    /** @type HTMLInputElement */
+    const scaleX = document.getElementById('scaleX')
+    /** @type HTMLInputElement */
+    const scaleY = document.getElementById('scaleY')
+
+    translateX.addEventListener('input', render)
+    translateY.addEventListener('input', render)
+    rotateDegree.addEventListener('input', render)
+    scaleX.addEventListener('input', render)
+    scaleY.addEventListener('input', render)
+
+    class M3 {
+      static projection(width, height) {
+        // 注意：这个矩阵翻转了 Y 轴，所以 0 在上方
+        return [2 / width, 0, 0, 0, -2 / height, 0, -1, 1, 1]
+      }
+
+      static identity() {
+        return [1, 0, 0, 0, 1, 0, 0, 0, 1]
+      }
+
+      static translation(tx, ty) {
+        return [1, 0, 0, 0, 1, 0, tx, ty, 1]
+      }
+
+      static rotation(degree) {
+        const radians = (degree * Math.PI) / 180
+        var c = Math.cos(radians)
+        var s = Math.sin(radians)
+        return [c, -s, 0, s, c, 0, 0, 0, 1]
+      }
+
+      static scaling(sx, sy) {
+        return [sx, 0, 0, 0, sy, 0, 0, 0, 1]
+      }
+
+      static multiply(a, b) {
+        var a00 = a[0 * 3 + 0]
+        var a01 = a[0 * 3 + 1]
+        var a02 = a[0 * 3 + 2]
+        var a10 = a[1 * 3 + 0]
+        var a11 = a[1 * 3 + 1]
+        var a12 = a[1 * 3 + 2]
+        var a20 = a[2 * 3 + 0]
+        var a21 = a[2 * 3 + 1]
+        var a22 = a[2 * 3 + 2]
+        var b00 = b[0 * 3 + 0]
+        var b01 = b[0 * 3 + 1]
+        var b02 = b[0 * 3 + 2]
+        var b10 = b[1 * 3 + 0]
+        var b11 = b[1 * 3 + 1]
+        var b12 = b[1 * 3 + 2]
+        var b20 = b[2 * 3 + 0]
+        var b21 = b[2 * 3 + 1]
+        var b22 = b[2 * 3 + 2]
+        return [
+          b00 * a00 + b01 * a10 + b02 * a20,
+          b00 * a01 + b01 * a11 + b02 * a21,
+          b00 * a02 + b01 * a12 + b02 * a22,
+          b10 * a00 + b11 * a10 + b12 * a20,
+          b10 * a01 + b11 * a11 + b12 * a21,
+          b10 * a02 + b11 * a12 + b12 * a22,
+          b20 * a00 + b21 * a10 + b22 * a20,
+          b20 * a01 + b21 * a11 + b22 * a21,
+          b20 * a02 + b21 * a12 + b22 * a22
+        ]
+      }
+    }
+
+    render()
+
+    function render() {
+      const program = webglUtils.createProgramFromScripts(gl, ['vertexShader', 'fragmentShader'])
+
+      const positionAttributeLocation = gl.getAttribLocation(program, 'a_position')
+
+      const positionBuffer = gl.createBuffer()
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
+      setFGeometry(gl)
+
+      const resolutionLocation = gl.getUniformLocation(program, 'u_resolution')
+      const matrixLocation = gl.getUniformLocation(program, 'u_matrix')
+
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height)
+
+      gl.clearColor(0, 0, 0, 0.1)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+
+      gl.useProgram(program)
+
+      gl.enableVertexAttribArray(positionAttributeLocation)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
+
+      gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, false, 0)
+
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height)
+
+      const translationMatrix = M3.translation(
+        parseFloat(translateX.value || 0),
+        parseFloat(translateY.value || 0)
+      )
+      const rotationMatrix = M3.rotation(parseFloat(rotateDegree.value || 0))
+      const scalingMatrix = M3.scaling(parseFloat(scaleX.value || 1), parseFloat(scaleY.value || 1))
+
+      let mat3 = M3.projection(canvas.width, canvas.height)
+
+      for (let i = 0; i < 3; ++i) {
+        mat3 = M3.multiply(mat3, translationMatrix)
+        mat3 = M3.multiply(mat3, rotationMatrix)
+        mat3 = M3.multiply(mat3, scalingMatrix)
+
+        gl.uniformMatrix3fv(matrixLocation, false, mat3)
+
+        gl.drawArrays(gl.TRIANGLES, 0, 18)
+      }
+    }
+
+    function setFGeometry(gl) {
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([
+          // left column
+          0, 0, 30, 0, 0, 150, 0, 150, 30, 0, 30, 150,
+
+          // top rung
+          30, 0, 100, 0, 30, 30, 30, 30, 100, 0, 100, 30,
+
+          // middle rung
+          30, 60, 67, 60, 30, 90, 30, 90, 67, 60, 67, 90
+        ]),
+        gl.STATIC_DRAW
+      )
+    }
+  </script>
+</html>
