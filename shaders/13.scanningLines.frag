@@ -7,7 +7,7 @@ uniform float u_time;
 
 void main() {
   vec2 coord = gl_FragCoord.xy / u_resolution;
-  vec3 color = vec3(1.0);
+  vec3 color = vec3(0.0);
 
   float size = 16.0;
   float alpha = sin(floor(coord.x * size) + u_time * 4.0) + 1.0 / 2.0;
