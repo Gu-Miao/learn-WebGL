@@ -6,7 +6,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 
 float with_time(float x, float multiplier) {
-  return x + sin(u_time) * multiplier;
+  return x + sin(u_time) * multiplier + u_time;
 }
 
 float fx(float x, float split) {
@@ -32,7 +32,6 @@ float fy(vec2 st, float size) {
     }
     return x < .9 ? 0. : 1.;
   }
-
 }
 
 void main() {
