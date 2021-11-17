@@ -84,7 +84,10 @@
       './26.jumpingStripes.frag',
       './27.glowingLine.frag',
       './28.spots.frag',
-      './29.circleSpots.frag'
+      './29.circleSpots.frag',
+      './30.gradianCircle.frag',
+      './31.waveLines.frag',
+      './32.scaningCircle.frag',
     ]
 
     /** @type HTMLSelectElement */
@@ -100,7 +103,7 @@
 
     const mouse = {
       x: 0,
-      y: 0
+      y: 0,
     }
 
     canvas.addEventListener('mousemove', e => {
@@ -204,7 +207,7 @@
             Prism.highlightAll()
             res(source)
           },
-          error: err => rej(err)
+          error: err => rej(err),
         })
       })
     }
